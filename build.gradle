@@ -12,7 +12,7 @@ plugins {
     // Android Gradle Plugin (AGP) — the plugin that knows how to compile
     // Kotlin/Java into an .apk file, process resources, sign the package, etc.
     // Without this, Gradle has no idea what an Android project is.
-    id 'com.android.application' version '8.2.2' apply false
+    id 'com.android.application' version '8.13.2' apply false
 
     // Kotlin Android plugin — teaches Gradle how to compile .kt source files.
     // The version must be compatible with the AGP version above.

@@ -12,7 +12,9 @@ Kotlin, Android Studio/Gradle project.
 - TYPE_APPLICATION_OVERLAY window for the floating control panel
 
 ## Built so far
-- Nothing yet — Milestone 1 in progress
+- Milestone 1 in progress
+- Android Studio auto-upgraded the build tooling: AGP 8.2.2 → 8.13.2,
+  Gradle wrapper 8.6 → 8.13. Kotlin plugin stayed at 1.9.22.
 
 ## Milestones (build in this order)
 1. Accessibility Service dispatches one tap at a hardcoded point (button-triggered, no overlay)
