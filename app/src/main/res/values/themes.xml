@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    res/values/themes.xml
+    ══════════════════════
+    Defines the app's visual theme — colours, typography, and shape defaults
+    that apply to every Activity and widget across the whole app.
+
+    The theme is applied via android:theme="@style/Theme.AutoClicker"
+    in AndroidManifest.xml on the <application> tag.
+
+    PARENT THEME:
+    "Theme.MaterialComponents.DayNight.DarkActionBar" means:
+      • Material Components  = use Google's Material Design widgets and styling
+      • DayNight             = automatically switch between light and dark modes
+                               based on the device's system dark mode setting
+      • DarkActionBar        = the action bar (top title bar) uses a dark/coloured
+                               background regardless of light/dark mode
+
+    The <item> tags OVERRIDE specific attributes of the parent theme.
+    We only need to set our brand colours — everything else inherits sensible
+    defaults from the parent.
+-->
+
+<resources>
+
+    <style name="Theme.AutoClicker"
+        parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+
+        <!-- ── Primary Colour ──────────────────────────────────────────────
+             Used for: action bar background, filled buttons, checkboxes, etc.
+             colorPrimary        = the main colour
+             colorPrimaryVariant = a darker shade (used for status bar)
+             colorOnPrimary      = text/icon colour drawn ON TOP of the primary colour
+                                   (white reads well on the purple_500 background)
+        -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- ── Secondary Colour ────────────────────────────────────────────
+             Used for: FABs, selection controls, links.
+             colorSecondary        = the accent colour
+             colorSecondaryVariant = darker variant
+             colorOnSecondary      = text/icon colour on top of the secondary colour
+        -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+
+        <!-- ── Status Bar ──────────────────────────────────────────────────
+             The thin bar at the very top of the screen (clock, battery, etc.).
+             We set it to the darker purple variant so it complements the action bar.
+             ?attr/colorPrimaryVariant means "read the colorPrimaryVariant value
+             from the current theme" — a dynamic reference rather than a hardcoded colour.
+        -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+
+    </style>
+
+</resources>

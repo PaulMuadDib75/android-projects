@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    AndroidManifest.xml
+    ════════════════════
+    Every Android app has exactly one of these files. It is the "panel schedule"
+    for the app — it tells the Android OS:
+      • What this app is called and what it looks like
+      • Which screens (Activities) and background workers (Services) it contains
+      • What permissions and system integrations it requires
+      • Which component should launch when the user taps the app icon
+
+    Android reads this file at INSTALL TIME and at RUNTIME.
+    Any component (Activity, Service) that isn't declared here cannot be used.
+-->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        ═══════════════════════════════════════════════════════════════════
+        APPLICATION BLOCK
+        Wraps all components (Activities, Services) belonging to this app.
+        ═══════════════════════════════════════════════════════════════════
+
+        android:label   — The app name shown in the launcher and task switcher.
+                          Points to @string/app_name in res/values/strings.xml.
+        android:theme   — The default visual style applied to every Activity.
+                          Points to res/values/themes.xml.
+        android:allowBackup — Whether Android can back up the app's data.
+                              true is fine for M1; we have no sensitive data yet.
+        android:supportsRtl — true = the layout mirrors correctly for right-to-left
+                              languages like Arabic or Hebrew. Good practice to set.
+    -->
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AutoClicker">
+
+        <!--
+            ═══════════════════════════════════════════════════════════════
+            MAIN ACTIVITY
+            The first screen the user sees when they launch the app.
+            ═══════════════════════════════════════════════════════════════
+
+            android:name     — The Kotlin class for this screen. The leading dot ( . )
+                               is shorthand for "in the app's namespace package"
+                               (com.example.autoclicker.MainActivity).
+            android:exported — Must be "true" because the system launcher (outside
+                               our app's process) needs to be able to start this Activity.
+                               Without exported="true" on the main Activity, the app
+                               icon does nothing when tapped.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+
+            <!--
+                INTENT FILTER — tells Android which "signals" this Activity responds to.
+                ACTION_MAIN  = this is an entry point for the app
+                CATEGORY_LAUNCHER = show it as an icon in the app launcher/home screen
+                Together these two lines are what make an app icon appear in the drawer.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+
+        <!--
+            ═══════════════════════════════════════════════════════════════
+            ACCESSIBILITY SERVICE DECLARATION
+            This is the core of Milestone 1. Read this section carefully
+            before approving — every attribute has a security reason.
+            ═══════════════════════════════════════════════════════════════
+
+            android:name
+              The Kotlin class that implements the AccessibilityService.
+
+            ───────────────────────────────────────────────────────────────
+            android:exported="true"
+            WHY THIS IS NEEDED:
+              The Android Accessibility Framework runs in a DIFFERENT PROCESS
+              from your app (it's part of the system_server process).
+              If exported="false", the service is invisible to any process
+              outside your app — including the system itself.
+              Setting exported="true" opens the service's door to the outside
+              world. (The 'permission' attribute below controls WHO may enter.)
+            ───────────────────────────────────────────────────────────────
+
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            WHY THIS IS NEEDED:
+              Think of this as a LOCKOUT TAG on the service's connection port.
+              It declares: "only a caller that HOLDS this permission may bind
+              to this service." The Android system is the only entity that
+              holds BIND_ACCESSIBILITY_SERVICE — no regular app does.
+
+              Effect: no malicious app can bind to your service and fire fake
+              taps. Only the system's accessibility framework can connect.
+
+              IMPORTANT: This is NOT a user-facing permission. It will never
+              appear in the app's permission list in Settings > App Info.
+              It is a system-level binding restriction, invisible to the user.
+            ───────────────────────────────────────────────────────────────
+
+            android:label
+              The name shown next to the service in Settings > Accessibility.
+        -->
+        <service
+            android:name=".TapAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:label="@string/accessibility_service_label">
+
+            <!--
+                ACCESSIBILITY SERVICE INTENT FILTER
+                This exact action string is what makes Android recognise this
+                as an accessibility service (not just a random background service).
+                Without it, the service is ignored by the accessibility framework.
+            -->
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+
+            <!--
+                ACCESSIBILITY SERVICE METADATA
+                ───────────────────────────────────────────────────────────────
+                WHY THIS IS NEEDED:
+                  This points to res/xml/accessibility_service_config.xml, which
+                  is a configuration file that tells Android what the service does:
+                    • What UI events it wants to receive
+                    • Whether it can inject gestures (canPerformGestures)
+                    • The description shown in the Settings > Accessibility screen
+
+                  WITHOUT THIS TAG: the service is registered in the manifest but
+                  never appears in Settings > Accessibility. The user cannot enable
+                  it, and it can never run. This tag is mandatory.
+                ───────────────────────────────────────────────────────────────
+                android:name  — must be exactly this string; it's how Android
+                                identifies accessibility service metadata.
+                android:resource — path to the config XML file.
+            -->
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+
+        </service>
+
+    </application>
+
+</manifest>

@@ -1,0 +1,97 @@
+// app/build.gradle
+// ══════════════════
+// The build script for the 'app' module — the actual Android application.
+// This is separate from the top-level build.gradle, which only declared
+// which plugins exist. This file APPLIES those plugins and configures the app.
+
+plugins {
+    // Apply the Android Application plugin (declared in top-level build.gradle).
+    // This is what tells Gradle: "this module is an Android app, not a library."
+    id 'com.android.application'
+
+    // Apply the Kotlin Android plugin so .kt files get compiled.
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+
+    // 'namespace' is used for two things:
+    //   1. The package path for the auto-generated R class (R.layout.activity_main etc.)
+    //   2. The default package for BuildConfig
+    // Must match the package declaration in your Kotlin source files.
+    namespace 'com.example.autoclicker'
+
+    // 'compileSdk' = the Android API level your code is compiled AGAINST.
+    // Using 34 (Android 14) gives access to all APIs up to Android 14.
+    // Think of it like the spec sheet you're wiring to — it defines the full range
+    // of available circuit types, even if the final installation uses fewer.
+    compileSdk 34
+
+    defaultConfig {
+        // The unique identifier for your app, globally across all Android devices
+        // and the Play Store. Once published, this CANNOT change — treat it like
+        // a permanent serial number. Changing it creates a brand new app.
+        applicationId "com.example.autoclicker"
+
+        // The oldest Android version this app will run on.
+        // 26 = Android 8.0 Oreo (released 2017).
+        // dispatchGesture() was introduced in API 24, so 26 gives us a safe buffer
+        // while covering the vast majority of devices in use today.
+        minSdk 26
+
+        // The Android version this app is DESIGNED for.
+        // Should always match compileSdk so the system uses the right behaviour flags.
+        targetSdk 34
+
+        // Internal integer version number — must increase with every release.
+        // The Play Store uses this to determine "is this a newer build?"
+        versionCode 1
+
+        // Human-readable version string shown to users in app details / About screen.
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            // Minification (ProGuard/R8) shrinks and obfuscates code for production.
+            // Disabled for now — we're in M1 debug mode. Enable later before publishing.
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        // Set Java bytecode compatibility to Java 8.
+        // Many modern AndroidX and Kotlin features (lambdas, default interface methods)
+        // require Java 8 compatibility to compile correctly.
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        // The Kotlin compiler must target the same Java version as compileOptions above.
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    // AndroidX Core KTX — Kotlin extension functions that make Android framework
+    // APIs more concise and idiomatic. For example, 'view.doOnLayout { }' instead
+    // of 'view.addOnLayoutChangeListener(...)'.
+    implementation 'androidx.core:core-ktx:1.12.0'
+
+    // AppCompat — provides backwards-compatible versions of newer Android UI widgets.
+    // Also provides AppCompatActivity, the base class for MainActivity.
+    // Without this, standard activities and toolbars don't render correctly on older OS versions.
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+
+    // Material Components — Google's Material Design widget library.
+    // Provides styled Button, TextField, and other widgets that match
+    // Android's modern design language.
+    implementation 'com.google.android.material:material:1.11.0'
+
+    // ConstraintLayout — a powerful layout system for positioning views
+    // relative to each other or the parent container.
+    // Used in activity_main.xml.
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+}

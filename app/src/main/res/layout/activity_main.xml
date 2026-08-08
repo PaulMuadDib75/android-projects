@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    res/layout/activity_main.xml
+    ════════════════════════════
+    Defines the visual layout for MainActivity — what appears on screen
+    and where each widget is positioned.
+
+    ConstraintLayout positions each view using constraints (like measurements
+    from the edges of a panel). Each view says things like:
+      "my top edge is 24dp below the bottom of that other view"
+      "my left and right edges are centred in the parent"
+
+    dp (density-independent pixels) = a unit that scales with screen density,
+    so a 24dp margin looks the same physical size on all devices.
+    sp (scale-independent pixels)   = dp but also scales with the user's
+                                      text size preference (accessibility).
+-->
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <!--
+        APP TITLE
+        ─────────
+        A large heading so the screen is immediately recognisable.
+        Constrained to: horizontally centred, 48dp from the top.
+    -->
+    <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="48dp" />
+
+    <!--
+        STATUS LABEL
+        ────────────
+        Shows the current state of the Accessibility Service at a glance.
+        Updated in MainActivity.onResume() and when the tap button is pressed.
+
+        Possible values (from strings.xml):
+          • "Service: OFF — tap the button above to enable it"
+          • "Service: ON — ready to tap!"
+          • "Tap sent to (500, 1000)"
+
+        Constrained to: 24dp below the title, horizontally centred.
+    -->
+    <TextView
+        android:id="@+id/textViewStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/status_service_off"
+        android:textSize="16sp"
+        android:gravity="center"
+        android:padding="8dp"
+        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        tools:text="Service: ON — ready to tap!" />
+
+    <!--
+        OPEN ACCESSIBILITY SETTINGS BUTTON
+        ────────────────────────────────────
+        Sends the user to Settings > Accessibility so they can enable the service.
+        We can't enable it programmatically — Android requires a manual user action.
+
+        Constrained to: 32dp below the status text, horizontally centred.
+    -->
+    <Button
+        android:id="@+id/buttonOpenSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_open_settings"
+        app:layout_constraintTop_toBottomOf="@id/textViewStatus"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp" />
+
+    <!--
+        SEND TAP BUTTON
+        ────────────────
+        The main test button for Milestone 1.
+        Calls TapAccessibilityService.instance?.performTap(500f, 1000f) via MainActivity.
+
+        Constrained to: 16dp below the Settings button, horizontally centred.
+    -->
+    <Button
+        android:id="@+id/buttonSendTap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_send_tap"
+        app:layout_constraintTop_toBottomOf="@id/buttonOpenSettings"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

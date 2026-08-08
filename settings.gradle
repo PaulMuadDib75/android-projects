@@ -1,0 +1,43 @@
+// settings.gradle
+// ════════════════
+// This file is read FIRST by Gradle, before any build.gradle files.
+// It answers two fundamental questions:
+//   1. Where should Gradle look to download plugins and libraries?
+//   2. Which sub-projects (modules) make up this project?
+//
+// Think of it like a site survey before the job starts — this file
+// establishes the lay of the land so the actual build work can begin.
+
+pluginManagement {
+    // Tell Gradle where to download build plugins from.
+    // 'google()'           = Google's Maven repo — required for Android Gradle Plugin (AGP)
+    // 'mavenCentral()'     = The main public Java/Kotlin library repo
+    // 'gradlePluginPortal' = Gradle's own plugin index
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    // FAIL_ON_PROJECT_REPOS = if any module (like 'app') tries to declare
+    // its own repositories block, the build fails loudly. This keeps all
+    // repository declarations centralised here in settings.gradle.
+    // It's like a single approved supplier list — no rogue purchases.
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// The human-readable name for the whole project.
+// This appears in Android Studio's title bar and in Gradle output.
+rootProject.name = "AutoClicker"
+
+// Include the 'app' directory as a Gradle sub-project (module).
+// The colon ( : ) is Gradle's path separator — ':app' means the 'app' folder
+// at the root of the project. Most Android projects have just this one module.
+include ':app'

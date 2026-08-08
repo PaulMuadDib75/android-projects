@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    res/values/strings.xml
+    ══════════════════════
+    All user-visible text lives here as named string resources.
+
+    WHY NOT INLINE TEXT?
+      Keeping strings in this file means:
+        1. You change wording in ONE place instead of hunting through XML and Kotlin.
+        2. Future translations (other languages) just add a new strings.xml in a
+           different values folder (e.g. values-fr/ for French). The app picks the
+           right one automatically based on the device's language setting.
+
+    In layout XML you reference these with @string/name.
+    In Kotlin you reference them with getString(R.string.name).
+-->
+
+<resources>
+
+    <!-- ── App Identity ─────────────────────────────────────────────────────── -->
+
+    <!-- Shown in the launcher, task switcher, and Settings > Accessibility list -->
+    <string name="app_name">Auto-Clicker</string>
+
+    <!-- Shown next to the service toggle in Settings > Accessibility -->
+    <string name="accessibility_service_label">Auto-Clicker Service</string>
+
+    <!--
+        Shown when the user taps the service name in Settings > Accessibility
+        to read more about it before enabling. Keep this honest and clear —
+        Android wants users to make an informed decision when enabling
+        accessibility services (they are powerful and potentially sensitive).
+    -->
+    <string name="accessibility_service_description">
+        Dispatches automated tap gestures at configured screen coordinates.
+        Designed for automating repetitive taps in games and apps.
+        Milestone 1: single hardcoded tap at (500, 1000) for testing.
+    </string>
+
+    <!-- ── Button Labels ────────────────────────────────────────────────────── -->
+
+    <!-- Button that opens the system Accessibility Settings screen -->
+    <string name="btn_open_settings">Open Accessibility Settings</string>
+
+    <!-- Button that fires the test tap; includes the hardcoded coordinates for clarity -->
+    <string name="btn_send_tap">Send Tap to (500, 1000)</string>
+
+    <!-- ── Status Messages ──────────────────────────────────────────────────── -->
+
+    <!-- Shown when TapAccessibilityService.instance == null (service not running) -->
+    <string name="status_service_off">Service: OFF  —  press the button above to enable it</string>
+
+    <!-- Shown when TapAccessibilityService.instance != null (service is live) -->
+    <string name="status_service_on">Service: ON  —  ready to tap!</string>
+
+    <!--
+        Shown after the tap button is pressed successfully.
+        %1$d and %2$d are integer format placeholders filled in at runtime.
+        In MainActivity.kt:
+            getString(R.string.status_tap_sent, TAP_X.toInt(), TAP_Y.toInt())
+        Produces: "Tap sent to (500, 1000)"
+    -->
+    <string name="status_tap_sent">Tap sent to (%1$d, %2$d)</string>
+
+</resources>

@@ -1,0 +1,20 @@
+// build.gradle  (TOP-LEVEL)
+// ══════════════════════════
+// This is the root build script — it applies to the whole project.
+// Its only job here is to DECLARE the build plugins and their versions.
+// The 'apply false' means: "make this plugin available, but don't apply it
+// to the root project itself — only the modules (like 'app') will apply it."
+//
+// Analogy: this is the master parts list for the whole job site.
+// The actual wiring (app configuration) happens in app/build.gradle.
+
+plugins {
+    // Android Gradle Plugin (AGP) — the plugin that knows how to compile
+    // Kotlin/Java into an .apk file, process resources, sign the package, etc.
+    // Without this, Gradle has no idea what an Android project is.
+    id 'com.android.application' version '8.2.2' apply false
+
+    // Kotlin Android plugin — teaches Gradle how to compile .kt source files.
+    // The version must be compatible with the AGP version above.
+    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+}

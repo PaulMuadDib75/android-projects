@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    res/xml/accessibility_service_config.xml
+    ════════════════════════════════════════
+    This is the "specification sheet" for the TapAccessibilityService.
+    It tells Android exactly what capabilities the service requires and
+    how it should behave.
+
+    This file is referenced by the <meta-data> tag in AndroidManifest.xml:
+        <meta-data
+            android:name="android.accessibilityservice"
+            android:resource="@xml/accessibility_service_config" />
+
+    WITHOUT THIS FILE: the service will not appear in Settings > Accessibility
+    and can never be enabled by the user, regardless of what is in the manifest.
+
+    ─────────────────────────────────────────────────────────────────────────
+    ATTRIBUTE EXPLANATIONS
+    ─────────────────────────────────────────────────────────────────────────
+
+    accessibilityEventTypes = "typeAllMask"
+        Which types of UI events this service subscribes to.
+        "typeAllMask" means: send me ALL event types (button clicks, text changes,
+        window opens, etc.).
+        For M1 our onAccessibilityEvent() is empty — we don't process any events.
+        Using typeAllMask is the standard starting point; in later milestones we
+        can narrow this to specific event types to reduce overhead.
+
+    accessibilityFeedbackType = "feedbackGeneric"
+        Tells Android what kind of output this service produces.
+        The built-in types are: spoken, audible, haptic, visual, braille.
+        Our service produces NONE of those — it injects taps. "feedbackGeneric"
+        is the catch-all value for non-standard use cases like ours.
+
+    canPerformGestures = "true"
+        ┌───────────────────────────────────────────────────────────────────┐
+        │ THIS IS THE KEY FLAG FOR AUTO-CLICKER BEHAVIOUR.                  │
+        │                                                                   │
+        │ Without canPerformGestures="true", calling dispatchGesture()      │
+        │ either silently does nothing or throws a security exception,      │
+        │ depending on the Android version.                                 │
+        │                                                                   │
+        │ Setting this to "true" explicitly grants the service permission   │
+        │ to inject gesture events into the input pipeline.                 │
+        └───────────────────────────────────────────────────────────────────┘
+
+    description = "@string/accessibility_service_description"
+        The text paragraph shown in Settings > Accessibility when the user
+        taps on this service to read about it before enabling it.
+        Must point to a string resource — inline text is not allowed here.
+
+    notificationTimeout = "100"
+        Minimum time in milliseconds between consecutive accessibility event
+        callbacks. If 100 events arrive in 100ms, they get batched/throttled.
+        100ms is a reasonable default. Not critical for M1 since we ignore events.
+-->
+
+<accessibility-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canPerformGestures="true"
+    android:description="@string/accessibility_service_description"
+    android:notificationTimeout="100" />
