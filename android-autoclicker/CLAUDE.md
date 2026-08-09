@@ -12,9 +12,32 @@ Kotlin, Android Studio/Gradle project.
 - TYPE_APPLICATION_OVERLAY window for the floating control panel
 
 ## Built so far
-- Milestone 1 in progress
+- Milestone 1 complete — AccessibilityService dispatches a tap that is
+  confirmed to register as a real UI click (verified via a target test
+  button placed at the tap's exact screen coordinates)
 - Android Studio auto-upgraded the build tooling: AGP 8.2.2 → 8.13.2,
   Gradle wrapper 8.6 → 8.13. Kotlin plugin stayed at 1.9.22.
+
+## Lessons Learned
+- `dispatchGesture()` operates in **absolute screen coordinates** — the
+  same space as `View.getLocationOnScreen()` — not coordinates relative to
+  an Activity's layout/content view. A status bar and/or ActionBar (as used
+  here, via `Theme.MaterialComponents.DayNight.DarkActionBar`) shifts a
+  view's layout-relative position away from its absolute screen position;
+  in M1 this was a 239px vertical offset that made an otherwise-correct
+  tap miss its target entirely.
+  → **Any future coordinate-recording feature (Milestone 3, tap-to-record)
+  must capture true screen position** via `getLocationOnScreen()` (or the
+  touch event's raw screen coordinates, e.g. `MotionEvent.getRawX/getRawY`)
+  — never layout-relative coordinates (`view.left`/`view.top`, or
+  view-local touch coordinates) — since those will replay the same
+  status-bar/ActionBar offset bug once recorded sequences are dispatched.
+- A `Path` with a true zero-movement stroke (`moveTo()` only, no
+  `lineTo()`) can have its DOWN/UP `MotionEvent`s coalesced or dropped by
+  the input pipeline on some devices, so `dispatchGesture()` reports
+  `onCompleted` successfully even though the View system never saw a
+  click. Fix: give the stroke a tiny (~1px) movement via `lineTo()` —
+  well inside touch slop, so it's still recognised as a tap, not a drag.
 
 ## Milestones (build in this order)
 1. Accessibility Service dispatches one tap at a hardcoded point (button-triggered, no overlay)

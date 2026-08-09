@@ -8,6 +8,7 @@ package com.example.autoclicker
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
 /**
@@ -72,6 +73,8 @@ class TapAccessibilityService : AccessibilityService() {
      */
     override fun onServiceConnected() {
         super.onServiceConnected()
+
+        Log.d("TapDebug", "onServiceConnected() - service is now live")
 
         // Store a reference to ourselves so MainActivity can find and call us.
         instance = this
@@ -150,27 +153,54 @@ class TapAccessibilityService : AccessibilityService() {
      */
     fun performTap(x: Float, y: Float) {
 
+        Log.d("TapDebug", "performTap() called with x=$x, y=$y")
+
         // ── Step 1: Define WHERE the tap lands ────────────────────────────────
         // Path is Android's class for describing a 2D line or shape.
-        // moveTo(x, y) moves the "pen" to our target coordinate without drawing.
-        // We DON'T call lineTo() — a tap doesn't travel anywhere.
+        // moveTo(x, y) moves the "pen" to our target coordinate.
+        //
+        // WHY lineTo() IS HERE (this used to be a true zero-movement path):
+        // Testing showed dispatchGesture() completed successfully (onCompleted
+        // fired) but the View system never registered a click — even though
+        // the button's bounds matched the tap coordinates exactly. This is a
+        // known quirk with AccessibilityService-injected gestures on several
+        // Android versions/OEM skins: a Path that is a single moveTo() with
+        // NO movement can produce a DOWN and UP MotionEvent pair that some
+        // devices' input pipelines coalesce or drop instead of delivering as
+        // two distinct touch samples, so it never reaches
+        // View.performClick().
+        //
+        // The documented workaround (used by several open-source auto-tap
+        // accessibility services) is to give the stroke a tiny — 1px —
+        // movement. That's far below ViewConfiguration's touch slop
+        // (the ~24px/8dp wiggle room Android already allows for a real
+        // finger's natural tremor during a tap), so it's still recognised
+        // as a tap rather than a scroll/drag, but it forces the input
+        // pipeline to record genuine DOWN → MOVE → UP samples instead of a
+        // single ambiguous point.
         val tapPath = Path().apply {
             moveTo(x, y)
+            lineTo(x + 1f, y + 1f)
         }
 
         // ── Step 2: Describe WHEN and HOW LONG the tap lasts ─────────────────
         // StrokeDescription wraps the Path with timing information.
         //
-        //   path      = the movement to simulate (our stationary tap point)
+        //   path      = the movement to simulate (our near-stationary tap point)
         //   startTime = delay in ms before this stroke begins (0 = start immediately)
         //   duration  = how long the finger is "pressed" in milliseconds
         //               50ms is a crisp, unmistakeable tap.
         //               < 10ms may be filtered out as noise by some apps.
         //               > 500ms starts to look like a long-press.
+        //
+        // 60ms confirmed reliable during M1 debugging (see the tiny lineTo()
+        // movement above — that was the actual fix for the injected tap not
+        // registering, not the duration). Real auto-clicker taps need to
+        // feel instant, so we keep this short now that M1 is confirmed working.
         val stroke = GestureDescription.StrokeDescription(
             tapPath,
             /* startTime = */ 0L,
-            /* duration  = */ 50L
+            /* duration  = */ 60L
         )
 
         // ── Step 3: Bundle the stroke into a GestureDescription ──────────────
@@ -188,8 +218,28 @@ class TapAccessibilityService : AccessibilityService() {
         // in the Android SDK can do this without root/system privileges.
         //
         //   gesture  = what to do (our tap)
-        //   callback = listener called when the gesture finishes (null = don't care)
+        //   callback = listener called when the gesture finishes — we pass a
+        //              GestureResultCallback here (instead of null) so we can
+        //              log whether the system actually carried out the tap
         //   handler  = which thread to invoke the callback on (null = main thread)
-        dispatchGesture(gesture, null, null)
+        dispatchGesture(gesture, object : GestureResultCallback() {
+
+            // Fires when the system successfully finishes running the gesture.
+            // This does NOT guarantee the tap did anything useful in the target
+            // app — just that Android delivered the touch event without being
+            // rejected or interrupted.
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+                super.onCompleted(gestureDescription)
+                Log.d("TapDebug", "Gesture onCompleted")
+            }
+
+            // Fires when the system refuses or interrupts the gesture — e.g.
+            // another gesture was already in progress, or the target app/window
+            // rejected synthetic touch input.
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                super.onCancelled(gestureDescription)
+                Log.d("TapDebug", "Gesture onCancelled")
+            }
+        }, null)
     }
 }

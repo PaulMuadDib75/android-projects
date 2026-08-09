@@ -10,6 +10,7 @@ package com.example.autoclicker
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -46,8 +47,8 @@ class MainActivity : AppCompatActivity() {
     //   You should see a touch ripple at roughly the centre of the screen.
     //
     // These will be configurable in Milestone 3 (multi-point recording mode).
-    private val TAP_X = 500f
-    private val TAP_Y = 1000f
+    private val TAP_X = 504f
+    private val TAP_Y = 1277f
 
     /**
      * Called once when this screen is first created (or re-created after rotation).
@@ -65,6 +66,8 @@ class MainActivity : AppCompatActivity() {
         // This inflates res/layout/activity_main.xml and sets it as the view.
         setContentView(R.layout.activity_main)
 
+        Log.d("TapDebug", "Screen size: ${resources.displayMetrics.widthPixels}x${resources.displayMetrics.heightPixels}")
+
         // ── Grab widget references ─────────────────────────────────────────
         // findViewById() searches the inflated layout for a view with the given ID.
         // The IDs are declared in activity_main.xml (android:id="@+id/...").
@@ -72,6 +75,44 @@ class MainActivity : AppCompatActivity() {
         val statusText      = findViewById<TextView>(R.id.textViewStatus)
         val btnOpenSettings = findViewById<Button>(R.id.buttonOpenSettings)
         val btnTap          = findViewById<Button>(R.id.buttonSendTap)
+        val btnTargetTest   = findViewById<Button>(R.id.buttonTargetTest)
+
+        // ── VERIFY: does the target button's actual rendered position match ──
+        // the hardcoded tap coordinates (TAP_X, TAP_Y)?
+        //
+        // WHY THIS CAN DIFFER EVEN THOUGH THE XML SAYS "444px, 978px, 120px":
+        // Those margins are relative to the ConstraintLayout's own origin,
+        // NOT necessarily the screen's absolute (0,0). If the activity isn't
+        // laid out edge-to-edge, the status bar (and on some devices, a
+        // display cutout) pushes the content view's origin down from the
+        // true top of the screen. dispatchGesture(), on the other hand,
+        // always uses ABSOLUTE SCREEN coordinates. So a view whose layout
+        // margins say "978px from the top of my parent" can easily be
+        // several dozen pixels away from screen y=978 — enough to miss the
+        // button's clickable bounds entirely.
+        //
+        // getLocationOnScreen() returns the view's actual top-left corner in
+        // that same absolute-screen coordinate space that dispatchGesture()
+        // uses, so we can compare directly against TAP_X/TAP_Y.
+        //
+        // post{} is required here: at this point in onCreate() the view has
+        // been created but not yet MEASURED or LAID OUT, so width/height/
+        // location would all read as 0. post{} queues this block to run
+        // after the first layout pass completes.
+        btnTargetTest.post {
+            val location = IntArray(2)
+            btnTargetTest.getLocationOnScreen(location)
+            val left = location[0]
+            val top = location[1]
+            val centerX = left + btnTargetTest.width / 2
+            val centerY = top + btnTargetTest.height / 2
+            Log.d(
+                "TapDebug",
+                "Target button actual screen bounds: left=$left, top=$top, " +
+                    "width=${btnTargetTest.width}, height=${btnTargetTest.height}, " +
+                    "center=($centerX, $centerY)  |  hardcoded tap target=($TAP_X, $TAP_Y)"
+            )
+        }
 
         // ── BUTTON 1: Open Accessibility Settings ─────────────────────────
         // Android deliberately prevents apps from enabling their own accessibility
@@ -88,6 +129,20 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // ── TARGET TEST BUTTON: proves the injected tap is functionally real ──
+        // This button sits exactly under the (TAP_X, TAP_Y) point (see
+        // activity_main.xml). "Show taps" only proves a ripple was drawn on
+        // screen — it does NOT prove the accessibility-injected gesture
+        // actually reached the Android input pipeline as a real touch event.
+        // If performTap() genuinely works, the OS delivers the synthetic tap
+        // the same way it would a real finger tap, which means THIS button's
+        // own onClick fires — not just a visual effect at that location.
+        btnTargetTest.setOnClickListener {
+            Log.d("TapDebug", "Target button onClick fired - injected gesture is functionally real!")
+            statusText.text = getString(R.string.status_target_tapped)
+            statusText.setBackgroundColor(getColor(R.color.target_tapped_green))
+        }
+
         // ── BUTTON 2: Send Tap ─────────────────────────────────────────────
         btnTap.setOnClickListener {
 
@@ -95,6 +150,8 @@ class MainActivity : AppCompatActivity() {
             // TapAccessibilityService.instance is set in onServiceConnected()
             // and cleared in onDestroy(), so null = service not running.
             val service = TapAccessibilityService.instance
+
+            Log.d("TapDebug", "Button pressed. Service instance is ${if (service == null) "NULL" else "NOT NULL"}")
 
             if (service == null) {
                 // Service is off — tell the user to enable it first.

@@ -46,6 +46,9 @@
     <!-- Button that fires the test tap; includes the hardcoded coordinates for clarity -->
     <string name="btn_send_tap">Send Tap to (500, 1000)</string>
 
+    <!-- Label for the small target button used to verify injected taps are functionally real -->
+    <string name="btn_target_test">TARGET</string>
+
     <!-- ── Status Messages ──────────────────────────────────────────────────── -->
 
     <!-- Shown when TapAccessibilityService.instance == null (service not running) -->
@@ -62,5 +65,8 @@
         Produces: "Tap sent to (500, 1000)"
     -->
     <string name="status_tap_sent">Tap sent to (%1$d, %2$d)</string>
+
+    <!-- Shown when the target test button's own onClick fires, proving the injected tap was a real, functional touch event -->
+    <string name="status_target_tapped">TARGET BUTTON WAS TAPPED!</string>
 
 </resources>

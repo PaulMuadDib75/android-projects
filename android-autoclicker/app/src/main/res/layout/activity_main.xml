@@ -108,4 +108,35 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
 
+    <!--
+        TARGET TEST BUTTON (debugging aid — proves the injected tap is real)
+        ──────────────────────────────────────────────────────────────────
+        "Show taps" only proves a touch ripple was drawn — it does NOT prove
+        the accessibility-injected gesture is a genuine input event that the
+        Android input pipeline delivers to a view's click handler. This
+        button's hitbox is positioned so its CENTER sits exactly on the
+        injected tap's target point: x=504px, y=1038px (screen center on
+        this device, 1008x2077).
+
+        If pressing "Send Tap" triggers THIS button's own onClick (see
+        MainActivity.kt), that's real functional proof performTap() works —
+        the OS treated the synthetic gesture exactly like a real finger tap.
+
+        Positioned with raw PIXEL margins (android:layout_marginStart/Top
+        using a "px" suffix) instead of dp, so it lines up exactly with the
+        pixel coordinates used in performTap() — no dp/px conversion math
+        to get wrong. Size is 120px square, so:
+            center = (444px + 60px, 978px + 60px) = (504px, 1038px)
+    -->
+    <Button
+        android:id="@+id/buttonTargetTest"
+        android:layout_width="120px"
+        android:layout_height="120px"
+        android:text="@string/btn_target_test"
+        android:textSize="10sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="444px"
+        android:layout_marginTop="978px" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
