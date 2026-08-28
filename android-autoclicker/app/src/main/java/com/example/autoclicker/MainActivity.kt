@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -121,6 +122,7 @@ class MainActivity : AppCompatActivity() {
         val btnOverlayPermission = findViewById<Button>(R.id.buttonOverlayPermission)
         val btnShowOverlay      = findViewById<Button>(R.id.buttonShowOverlay)
         val btnHideOverlay      = findViewById<Button>(R.id.buttonHideOverlay)
+        val editTextIntervalMs  = findViewById<EditText>(R.id.editTextIntervalMs)
 
         // ── VERIFY: does the target button's actual rendered position match ──
         // the hardcoded tap coordinates (TAP_X, TAP_Y)?
@@ -239,9 +241,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ── BUTTON 4: Show Overlay (Milestone 2) ─────────────────────────────
+        // ── BUTTON 4: Show Overlay (Milestone 2, interval added in Milestone 4) ──
         // Starts OverlayService, which draws the small floating button on
-        // top of every other app and hosts the repeating tap loop.
+        // top of every other app and hosts the tap-sequence replay loop.
         btnShowOverlay.setOnClickListener {
             if (!Settings.canDrawOverlays(this)) {
                 // Guard against the button being tapped before permission is
@@ -254,6 +256,15 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
+                // MILESTONE 4: read + validate the interval field BEFORE
+                // doing anything else. getValidatedIntervalMs() shows its
+                // own Toast and returns null on bad input — bailing out here
+                // (before requesting notification permission or starting
+                // the service) means an invalid interval never reaches
+                // OverlayService at all.
+                val intervalMs = getValidatedIntervalMs(editTextIntervalMs)
+                    ?: return@setOnClickListener
+
                 // POST_NOTIFICATIONS is only a real runtime permission from
                 // API 33 (Android 13) onward — on older versions, posting a
                 // notification never required asking the user at all.
@@ -276,10 +287,12 @@ class MainActivity : AppCompatActivity() {
                 // startService()) is required on API 26+ so the system
                 // correctly expects this service to promote itself to
                 // foreground via startForeground() within a few seconds.
-                ContextCompat.startForegroundService(
-                    this,
-                    Intent(this, OverlayService::class.java)
-                )
+                // The validated interval rides along as an Intent extra —
+                // see OverlayService.EXTRA_TAP_INTERVAL_MS and its
+                // onStartCommand() for the receiving end.
+                val serviceIntent = Intent(this, OverlayService::class.java)
+                    .putExtra(OverlayService.EXTRA_TAP_INTERVAL_MS, intervalMs)
+                ContextCompat.startForegroundService(this, serviceIntent)
             }
             updateOverlayStatus(overlayStatusText, btnShowOverlay, btnHideOverlay)
         }
@@ -295,6 +308,53 @@ class MainActivity : AppCompatActivity() {
         // returns to this screen, e.g. after granting permission in Settings).
         updateOverlayStatus(overlayStatusText, btnShowOverlay, btnHideOverlay)
     }
+
+    // ─── HELPER: VALIDATE THE TAP-INTERVAL FIELD (Milestone 4) ─────────────────
+    //
+    // Reads editTextIntervalMs's current text and checks it against
+    // OverlayService.MIN_TAP_INTERVAL_MS / MAX_TAP_INTERVAL_MS — those
+    // constants are the single source of truth for the allowed range (also
+    // reused defensively inside OverlayService.onStartCommand() itself), so
+    // this function never hardcodes its own copy of the bounds.
+    //
+    // Returns the validated value, or null if the field is empty, not a
+    // whole number, or outside the allowed range — showing an explanatory
+    // Toast in every failure case, since a null return here means the
+    // caller (btnShowOverlay's click listener) will silently NOT start the
+    // overlay, and the user needs to know why.
+    private fun getValidatedIntervalMs(editTextIntervalMs: EditText): Long? {
+        val rawText = editTextIntervalMs.text.toString().trim()
+
+        if (rawText.isEmpty()) {
+            Toast.makeText(this, getString(R.string.error_interval_required), Toast.LENGTH_SHORT).show()
+            return null
+        }
+
+        // toLongOrNull() rather than toInt(): a plain try/catch around
+        // toLong() would work too, but this reads as "give me a Long, or
+        // null if that's not possible" without an explicit exception path.
+        val intervalMs = rawText.toLongOrNull()
+        if (intervalMs == null) {
+            Toast.makeText(this, getString(R.string.error_interval_invalid_number), Toast.LENGTH_SHORT).show()
+            return null
+        }
+
+        if (intervalMs < OverlayService.MIN_TAP_INTERVAL_MS || intervalMs > OverlayService.MAX_TAP_INTERVAL_MS) {
+            Toast.makeText(
+                this,
+                getString(
+                    R.string.error_interval_out_of_range,
+                    OverlayService.MIN_TAP_INTERVAL_MS,
+                    OverlayService.MAX_TAP_INTERVAL_MS
+                ),
+                Toast.LENGTH_SHORT
+            ).show()
+            return null
+        }
+
+        return intervalMs
+    }
+
 
     // ─── HELPER: REFRESH OVERLAY STATUS TEXT + BUTTON ENABLED STATE ────────────
     //

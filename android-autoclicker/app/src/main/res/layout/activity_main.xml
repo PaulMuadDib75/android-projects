@@ -158,19 +158,66 @@
         android:layout_marginTop="16dp" />
 
     <!--
+        ═══════════════════════════════════════════════════════════════════
+        MILESTONE 4: TAP INTERVAL INPUT
+        ═══════════════════════════════════════════════════════════════════
+        Deliberately placed BETWEEN "Grant Overlay Permission" and "Show
+        Overlay" — this value is read and validated (see MainActivity.kt's
+        btnShowOverlay click listener) at the moment the overlay is started,
+        so it belongs right before that button in the natural top-to-bottom
+        flow of this screen. Pre-filled with "1000" as the sensible default
+        (matches OverlayService.DEFAULT_TAP_INTERVAL_MS) — editable, not just
+        a hint, so the user always sees a valid starting value.
+
+        inputType="number" gives a numeric-only soft keyboard, but does NOT
+        by itself stop a blank field, non-numeric paste, or an out-of-range
+        value — MainActivity.kt still validates the actual text against
+        OverlayService.MIN_TAP_INTERVAL_MS / MAX_TAP_INTERVAL_MS before ever
+        starting the service.
+    -->
+    <TextView
+        android:id="@+id/textViewIntervalLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/label_tap_interval"
+        android:textSize="14sp"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/buttonOverlayPermission"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp" />
+
+    <EditText
+        android:id="@+id/editTextIntervalMs"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="1000"
+        android:inputType="number"
+        android:gravity="center"
+        android:importantForAutofill="no"
+        app:layout_constraintTop_toBottomOf="@id/textViewIntervalLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp" />
+
+    <!--
         SHOW OVERLAY BUTTON
         ─────────────────────
         Starts OverlayService (a foreground service) and shows the small
         draggable floating button over other apps. Only functional once
         overlay permission is granted — MainActivity checks this before
         starting the service and shows a message instead if it isn't.
+        Milestone 4: also reads + validates editTextIntervalMs above and
+        sends it along as an Intent extra — see OverlayService.EXTRA_TAP_INTERVAL_MS.
     -->
     <Button
         android:id="@+id/buttonShowOverlay"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/btn_show_overlay"
-        app:layout_constraintTop_toBottomOf="@id/buttonOverlayPermission"
+        app:layout_constraintTop_toBottomOf="@id/editTextIntervalMs"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />

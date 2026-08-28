@@ -46,10 +46,14 @@ import kotlin.math.abs
  *      using WindowManager + TYPE_APPLICATION_OVERLAY.
  *   2. Runs as a FOREGROUND service (a persistent notification, Android
  *      won't casually kill it) so the button stays up reliably.
- *   3. Owns a simple repeating tap loop: tapping the floating button toggles
- *      it on/off. While "on", it calls TapAccessibilityService.instance
- *      ?.performTap() once per second at the same hardcoded M1 test
- *      coordinates (MainActivity.TAP_X / TAP_Y).
+ *   3. Owns a repeating tap loop: tapping the floating button toggles it
+ *      on/off. While "on", it walks the Milestone 3 recordedPoints list in
+ *      order — calling TapAccessibilityService.instance?.performTap() once
+ *      per point — looping back to the first point after the last, at the
+ *      interval (ms) the user set in MainActivity before showing the
+ *      overlay (Milestone 4; see EXTRA_TAP_INTERVAL_MS below). M2's single
+ *      hardcoded tap point is gone — replay now plays back whatever was
+ *      actually recorded.
  *
  * Electrician analogy: TapAccessibilityService is the licensed technician who
  * can actually pull the lever at the panel (dispatchGesture()). OverlayService
@@ -87,9 +91,34 @@ class OverlayService : Service() {
         private const val CHANNEL_ID = "autoclicker_overlay_channel"
         private const val NOTIFICATION_ID = 1001
 
-        // Fixed cadence for the M2 tap loop. Per-point/adjustable intervals
-        // are Milestone 4 — this is intentionally a single hardcoded number.
-        private const val TAP_INTERVAL_MS = 1000L
+        // ── Milestone 4: configurable tap interval ──────────────────────────
+        // Intent extra key MainActivity uses to hand this service the
+        // user-chosen delay (ms) between taps, set via startForegroundService()
+        // just before the overlay is shown. Replaces M2's hardcoded
+        // TAP_INTERVAL_MS constant — the value now comes from the UI instead
+        // of being baked into the code.
+        const val EXTRA_TAP_INTERVAL_MS = "com.example.autoclicker.EXTRA_TAP_INTERVAL_MS"
+
+        // Fallback only — used if the service is ever started without the
+        // extra present. MainActivity always sends one after validating it,
+        // so this path is defensive, not the normal one.
+        const val DEFAULT_TAP_INTERVAL_MS = 1000L
+
+        // Sane bounds, enforced BOTH here (defense-in-depth, via coerceIn()
+        // in onStartCommand()) AND in MainActivity's input validation (so the
+        // user gets an immediate, friendly Toast instead of a silently
+        // clamped value).
+        //   MIN — performTap()'s own gesture stroke takes ~60ms (see
+        //   TapAccessibilityService's lineTo() comment), and
+        //   dispatchGesture() can only run ONE gesture at a time. An
+        //   interval shorter than that risks the next tap firing before the
+        //   previous one finishes, and getting silently dropped/cancelled.
+        //   100ms gives a safety margin above that 60ms floor.
+        const val MIN_TAP_INTERVAL_MS = 100L
+        //   MAX — 10 minutes. No technical reason to cap it lower; this is
+        //   just a generous sanity ceiling so a stray extra zero typed into
+        //   the interval field doesn't turn into an hours-long silent wait.
+        const val MAX_TAP_INTERVAL_MS = 600_000L
     }
 
     // ─── WINDOW / VIEW STATE ────────────────────────────────────────────────
@@ -105,13 +134,36 @@ class OverlayService : Service() {
     private val tapHandler = Handler(Looper.getMainLooper())
     private var isTapLoopRunning = false
 
+    // Set from the Intent extra in onStartCommand() (see EXTRA_TAP_INTERVAL_MS
+    // above). Replaces M2's hardcoded TAP_INTERVAL_MS constant — this is now
+    // the user-chosen delay (ms) between each tap in the sequence.
+    private var tapIntervalMs = DEFAULT_TAP_INTERVAL_MS
+
+    // Which point in recordedPoints the loop will tap next. Milestone 4
+    // walks the whole list in order instead of M2's single hardcoded point,
+    // wrapping back to 0 after the last point for a continuous replay cycle.
+    // Reset to 0 whenever the loop (re)starts, so playback always begins
+    // from the first recorded point.
+    private var currentPointIndex = 0
+
     // A self-rescheduling Runnable: each run() both fires a tap AND queues
-    // its own next run TAP_INTERVAL_MS later. This is the standard Android
+    // its own next run tapIntervalMs later. This is the standard Android
     // pattern for "repeat until cancelled" without needing a Timer/Thread.
     private val tapRunnable = object : Runnable {
         override fun run() {
-            TapAccessibilityService.instance?.performTap(MainActivity.TAP_X, MainActivity.TAP_Y)
-            tapHandler.postDelayed(this, TAP_INTERVAL_MS)
+            // Defensive only — recordedPoints can't normally go empty mid-loop
+            // (recording is mutually exclusive with the tap loop, and
+            // startTapLoop() already refuses to start when it's empty), but
+            // bail out cleanly here instead of a divide-by-zero on the modulo
+            // below if that invariant is ever broken by future code.
+            if (recordedPoints.isEmpty()) {
+                stopTapLoop()
+                return
+            }
+            val point = recordedPoints[currentPointIndex]
+            TapAccessibilityService.instance?.performTap(point.x, point.y)
+            currentPointIndex = (currentPointIndex + 1) % recordedPoints.size
+            tapHandler.postDelayed(this, tapIntervalMs)
         }
     }
 
@@ -190,8 +242,20 @@ class OverlayService : Service() {
      * lifecycle fully explicit and user-driven, rather than having Android
      * silently restart it in the background with no button/notification
      * context to explain why it's running again.
+     *
+     * MILESTONE 4 ADDITION: this is also where the user's chosen tap
+     * interval arrives. MainActivity already validated it against
+     * MIN_TAP_INTERVAL_MS/MAX_TAP_INTERVAL_MS before sending it, but we
+     * coerceIn() again here too — defense-in-depth, same reasoning as the
+     * canDrawOverlays() re-check in onCreate(): this service shouldn't trust
+     * a caller's Intent blindly just because the normal caller (MainActivity)
+     * already checked once.
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val requestedIntervalMs = intent?.getLongExtra(EXTRA_TAP_INTERVAL_MS, DEFAULT_TAP_INTERVAL_MS)
+            ?: DEFAULT_TAP_INTERVAL_MS
+        tapIntervalMs = requestedIntervalMs.coerceIn(MIN_TAP_INTERVAL_MS, MAX_TAP_INTERVAL_MS)
+        Log.d("TapDebug", "OverlayService onStartCommand() - tapIntervalMs=$tapIntervalMs")
         return START_NOT_STICKY
     }
 
@@ -446,8 +510,20 @@ class OverlayService : Service() {
         // nothing and closes off any future path that calls startTapLoop()
         // directly.
         if (isRecording) return
-        Log.d("TapDebug", "Tap loop started")
+
+        // MILESTONE 4: there is nothing to replay until at least one point
+        // has been recorded (Milestone 3). Fail gracefully — no crash, the
+        // button stays in its "off" state, and the user gets told why
+        // nothing happened instead of silently nothing happening.
+        if (recordedPoints.isEmpty()) {
+            Log.d("TapDebug", "Tap loop start requested with no recorded points")
+            Toast.makeText(this, getString(R.string.status_no_points_recorded), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Log.d("TapDebug", "Tap loop started: ${recordedPoints.size} points, interval=${tapIntervalMs}ms")
         isTapLoopRunning = true
+        currentPointIndex = 0 // always replay from the first recorded point
         // .post() (not .postDelayed()) so the FIRST tap fires immediately;
         // every subsequent tap is scheduled from inside tapRunnable itself.
         tapHandler.post(tapRunnable)
@@ -461,6 +537,7 @@ class OverlayService : Service() {
         // every cycle, so without this it would keep firing taps forever,
         // even after the button is toggled "off" or the service is destroyed.
         tapHandler.removeCallbacks(tapRunnable)
+        currentPointIndex = 0 // next start always begins from point 0, not wherever this stop landed
         toggleButtonView?.setBackgroundResource(R.drawable.overlay_toggle_off)
     }
 

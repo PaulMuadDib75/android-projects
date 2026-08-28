@@ -46,6 +46,26 @@ Kotlin, Android Studio/Gradle project.
   pass-through is correctly blocked during recording and restored after
   Stop, mutual exclusion holds, and the overlay survives a task-kill from
   Recents.
+- Milestone 4 complete — sequence replay with a global interval control.
+  `OverlayService`'s tap loop no longer replays M2's single hardcoded point;
+  it now walks the Milestone 3 `recordedPoints` list in order, wrapping back
+  to the first point after the last (continuous loop), at a delay the user
+  sets in `MainActivity` before pressing Show Overlay. The delay travels
+  from `MainActivity` to `OverlayService` as an `Intent` extra
+  (`OverlayService.EXTRA_TAP_INTERVAL_MS`) on `startForegroundService()`,
+  read in `onStartCommand()` — not a companion-object constant like
+  `TAP_X`/`TAP_Y`, since this is a fresh value the user picks per run rather
+  than a compile-time constant. `MainActivity` gained a numeric input field
+  (pre-filled `1000`) validated against `OverlayService.MIN_TAP_INTERVAL_MS`
+  (100ms — set just above `performTap()`'s own ~60ms gesture-stroke
+  duration, since `dispatchGesture()` only runs one gesture at a time) and
+  `MAX_TAP_INTERVAL_MS` (600,000ms / 10 min, a generous sanity ceiling);
+  invalid input shows a Toast and the overlay does not start.
+  `startTapLoop()` also now refuses to start (Toast + Log, no crash) if
+  `recordedPoints` is empty. No `AndroidManifest.xml` changes. NOT built in
+  this milestone: per-point interval editing (see the Milestones list note
+  above) — the interval is a single global value, not configurable per
+  point yet.
 
 ## Lessons Learned
 - `dispatchGesture()` operates in **absolute screen coordinates** — the
@@ -124,10 +144,13 @@ Kotlin, Android Studio/Gradle project.
   `ls ~/.gradle/wrapper/dists/gradle-8.13-bin/`).
 
 ## Milestones (build in this order)
-1. Accessibility Service dispatches one tap at a hardcoded point (button-triggered, no overlay)
-2. Floating overlay with start/stop toggle
-3. Multi-point recording mode (tap-to-record)
-4. Per-point interval editing + global speed control
+1. Accessibility Service dispatches one tap at a hardcoded point (button-triggered, no overlay) — DONE
+2. Floating overlay with start/stop toggle — DONE
+3. Multi-point recording mode (tap-to-record) — DONE
+4. Sequence replay with global interval control — DONE
+   (per-point interval editing, originally scoped here, was NOT built —
+   every point currently replays at the same global interval; still open,
+   candidate for folding into Milestone 5's sequence editor work)
 5. Save/load sequences
 6. Polish: drag overlay, minimize state, loop-count limits
 

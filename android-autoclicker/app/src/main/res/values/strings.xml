@@ -132,4 +132,31 @@
     <!-- Label for the button inside the recording catcher that ends the session -->
     <string name="stop_recording_button_text">Stop Recording</string>
 
+
+    <!-- ── Milestone 4: Sequence Replay + Global Interval ──────────────────── -->
+
+    <!-- Label above the tap-interval input field in MainActivity -->
+    <string name="label_tap_interval">Tap Interval (ms) between each point:</string>
+
+    <!-- Shown when the interval field is left empty and "Show Overlay" is pressed -->
+    <string name="error_interval_required">Enter a tap interval in milliseconds</string>
+
+    <!-- Shown when the interval field contains something that isn\'t a whole number -->
+    <string name="error_interval_invalid_number">Enter a whole number for the interval</string>
+
+    <!--
+        Shown when the entered interval is outside OverlayService's allowed
+        range. %1$d and %2$d are filled in from OverlayService.MIN_TAP_INTERVAL_MS
+        / MAX_TAP_INTERVAL_MS, so this message can never drift out of sync
+        with the actual enforced bounds.
+    -->
+    <string name="error_interval_out_of_range">Interval must be between %1$d and %2$d ms</string>
+
+    <!--
+        Shown (Toast) if the floating button's tap loop is started with no
+        recorded points yet — e.g. the user never used Record, or the app
+        was restarted since (recordings are in-memory only until Milestone 5).
+    -->
+    <string name="status_no_points_recorded">No points recorded yet — use Record on the floating panel first</string>
+
 </resources>
