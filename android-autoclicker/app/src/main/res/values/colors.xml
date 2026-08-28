@@ -32,4 +32,7 @@
     <!-- Bright highlight shown on the status label when the target test button confirms a real injected tap landed -->
     <color name="target_tapped_green">#FF4CAF50</color>
 
+    <!-- Milestone 2: floating overlay button, "OFF" state (tap loop not running) -->
+    <color name="overlay_toggle_off_gray">#FF757575</color>
+
 </resources>

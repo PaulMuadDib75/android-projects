@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    res/layout/overlay_panel.xml
+    ══════════════════════════════
+    The floating button itself — this is what OverlayService inflates and
+    hands to WindowManager to draw on top of every other app.
+
+    WHY A FrameLayout WRAPPER AROUND A SINGLE VIEW:
+      Right now the "panel" is just one circular button. A FrameLayout
+      wrapper (instead of making the button the root view directly) means
+      a LATER milestone (e.g. adding a small drag-handle icon, or a
+      second mini-button) can add more children here without having to
+      restructure this file or touch OverlayService's inflate/attach code.
+
+    SIZE:
+      56dp is the standard Material "large touch target" size — big
+      enough to reliably drag/tap with a thumb, small enough to stay out
+      of the way over whatever app is running underneath.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <!--
+        The visible, touchable button. OverlayService sets its
+        background to overlay_toggle_off.xml / overlay_toggle_on.xml
+        depending on whether the tap loop is running, and attaches the
+        drag-vs-tap touch listener directly to this view.
+
+        contentDescription is read aloud by screen readers (TalkBack) —
+        good practice for any touch target, and required by Android
+        Studio's lint checks for ImageView-like views with no visible text.
+    -->
+    <View
+        android:id="@+id/overlayToggleButton"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/overlay_toggle_off"
+        android:contentDescription="@string/overlay_toggle_content_description"
+        android:elevation="8dp" />
+
+</FrameLayout>

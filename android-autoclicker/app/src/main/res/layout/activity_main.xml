@@ -109,6 +109,91 @@
         android:layout_marginTop="16dp" />
 
     <!--
+        ═══════════════════════════════════════════════════════════════════
+        MILESTONE 2: OVERLAY CONTROLS
+        ═══════════════════════════════════════════════════════════════════
+    -->
+
+    <!--
+        OVERLAY STATUS LABEL
+        ─────────────────────
+        Separate from textViewStatus above (which is about the tap/service
+        state and gets overwritten by the Send Tap / Target Test buttons).
+        Refreshed in MainActivity.onResume() to reflect both the
+        SYSTEM_ALERT_WINDOW permission state and whether OverlayService is
+        currently running.
+    -->
+    <TextView
+        android:id="@+id/textViewOverlayStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/status_overlay_permission_needed"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:padding="8dp"
+        app:layout_constraintTop_toBottomOf="@id/buttonSendTap"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        tools:text="Overlay permission: NOT GRANTED" />
+
+    <!--
+        GRANT OVERLAY PERMISSION BUTTON
+        ─────────────────────────────────
+        Deep-links to the system "draw over other apps" settings screen for
+        this app (Settings.ACTION_MANAGE_OVERLAY_PERMISSION). Same pattern
+        as buttonOpenSettings above — Android requires a manual user action
+        in system Settings, we cannot grant this to ourselves in code.
+    -->
+    <Button
+        android:id="@+id/buttonOverlayPermission"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_overlay_permission"
+        app:layout_constraintTop_toBottomOf="@id/textViewOverlayStatus"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!--
+        SHOW OVERLAY BUTTON
+        ─────────────────────
+        Starts OverlayService (a foreground service) and shows the small
+        draggable floating button over other apps. Only functional once
+        overlay permission is granted — MainActivity checks this before
+        starting the service and shows a message instead if it isn't.
+    -->
+    <Button
+        android:id="@+id/buttonShowOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_show_overlay"
+        app:layout_constraintTop_toBottomOf="@id/buttonOverlayPermission"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!--
+        HIDE OVERLAY BUTTON
+        ─────────────────────
+        Stops OverlayService, removing the floating button and its
+        notification. Kept as a separate explicit button (rather than one
+        clever toggle button) to match the existing explicit-button style
+        of this screen and keep enable/disable logic easy to follow.
+    -->
+    <Button
+        android:id="@+id/buttonHideOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_hide_overlay"
+        app:layout_constraintTop_toBottomOf="@id/buttonShowOverlay"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp" />
+
+    <!--
         TARGET TEST BUTTON (debugging aid — proves the injected tap is real)
         ──────────────────────────────────────────────────────────────────
         "Show taps" only proves a touch ripple was drawn — it does NOT prove

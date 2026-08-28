@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    overlay_toggle_on.xml
+    ═══════════════════════
+    Background for the floating overlay button when the tap loop is
+    RUNNING. See overlay_toggle_off.xml for the full explanation of how
+    and why this is swapped in code rather than using a StateListDrawable.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- Green fill = "on" / actively tapping. Reuses the same green already used elsewhere in the app (target_tapped_green) to confirm "something real happened," so the color language stays consistent app-wide. -->
+    <solid android:color="@color/target_tapped_green" />
+
+    <stroke
+        android:width="2dp"
+        android:color="@color/white" />
+
+</shape>

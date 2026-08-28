@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    ic_notification.xml
+    ═══════════════════════
+    Small icon shown in the status bar and notification shade while
+    OverlayService's foreground-service notification is active.
+
+    WHY A NEW FILE INSTEAD OF REUSING THE APP'S LAUNCHER ICON:
+      This project has no mipmap/launcher-icon resources at all (no
+      android:icon set anywhere) — there is nothing to reuse. But even if
+      there were, Android status-bar icons are supposed to be flat,
+      single-color SILHOUETTES (the system tints them automatically,
+      e.g. white-on-black or black-on-white depending on the notification
+      shade theme) — a full-color launcher icon would render as a solid
+      colored blob and look wrong. A simple vector dot is the correct,
+      minimal choice here, not just a stand-in.
+
+    This is a VectorDrawable: android:pathData describes the shape as an
+    SVG-style path on a 24x24dp virtual canvas (viewportWidth/Height),
+    scaled to whatever size Android actually needs it at. android:tint
+    is deliberately left unset so the system can apply its own tint.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- A simple filled circle, centered on the 24x24 canvas, radius 8 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,4a8,8 0,1 0,0.001 0z" />
+
+</vector>

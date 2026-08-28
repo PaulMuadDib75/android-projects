@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    overlay_toggle_off.xml
+    ═══════════════════════
+    Background for the floating overlay button when the tap loop is
+    STOPPED. A <shape> drawable is a vector shape described in XML — no
+    image file needed, so it scales cleanly to any screen density.
+
+    android:shape="oval" — draws an ellipse filling the view's bounds.
+    Since overlay_panel.xml gives the button equal width and height, an
+    oval renders as a perfect circle.
+
+    This is swapped for overlay_toggle_on.xml in code, via
+    setBackgroundResource(), whenever OverlayService's tap-loop state
+    changes — it's app-logic state (is the loop running?), not a touch
+    state (pressed/focused/etc.), so a plain shape works here rather than
+    a <selector>/StateListDrawable.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- Flat gray fill = "off" / idle. Matches colors.xml overlay_toggle_off_gray. -->
+    <solid android:color="@color/overlay_toggle_off_gray" />
+
+    <!-- Thin white ring so the button stays visible against any background app behind it -->
+    <stroke
+        android:width="2dp"
+        android:color="@color/white" />
+
+</shape>

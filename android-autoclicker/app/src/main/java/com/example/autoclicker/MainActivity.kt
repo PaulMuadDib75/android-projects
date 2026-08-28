@@ -8,12 +8,18 @@ package com.example.autoclicker
 // TextView     — a widget that displays text (read-only)
 // AppCompatActivity — the base class for activities with backwards-compatible features
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /**
  * MainActivity
@@ -34,11 +40,12 @@ import androidx.appcompat.app.AppCompatActivity
  */
 class MainActivity : AppCompatActivity() {
 
-    // ─── TEST TAP COORDINATES ─────────────────────────────────────────────────
+    // ─── COMPANION OBJECT: SHARED TEST TAP COORDINATES ─────────────────────────
+    //
     // These are the HARDCODED screen pixel coordinates for the M1 test tap.
     //
-    // x = 500  →  roughly centre-horizontal on a 1080px-wide screen
-    // y = 1000 →  a little below the vertical mid-point on most phones
+    // x = 504  →  roughly centre-horizontal on a 1080px-wide screen
+    // y = 1277 →  a little below the vertical mid-point on most phones
     //
     // HOW TO SEE THE TAP:
     //   Open a drawing app (Google Keep, Samsung Notes, etc.) so there's
@@ -46,9 +53,43 @@ class MainActivity : AppCompatActivity() {
     //   The tap fires at these coordinates even though a different app is visible.
     //   You should see a touch ripple at roughly the centre of the screen.
     //
+    // WHY THESE MOVED FROM A PLAIN 'private val' TO A COMPANION OBJECT (M2):
+    //   In M1 these only needed to be readable from inside MainActivity, so
+    //   plain instance fields were fine. Milestone 2 adds OverlayService — a
+    //   foreground service that must keep running and keep tapping even
+    //   after MainActivity is closed/destroyed. A service can't reach into
+    //   a destroyed Activity to read its instance fields, so these needed
+    //   to become constants that belong to the CLASS itself (like
+    //   TapAccessibilityService.instance does), reachable as
+    //   MainActivity.TAP_X / MainActivity.TAP_Y from anywhere.
+    //
     // These will be configurable in Milestone 3 (multi-point recording mode).
-    private val TAP_X = 504f
-    private val TAP_Y = 1277f
+    companion object {
+        const val TAP_X = 504f
+        const val TAP_Y = 1277f
+    }
+
+    // ─── NOTIFICATION PERMISSION LAUNCHER (Milestone 2, API 33+) ───────────────
+    //
+    // POST_NOTIFICATIONS is a RUNTIME permission (unlike the two "normal"
+    // foreground-service permissions, which are silently auto-granted) — on
+    // Android 13+, requesting it pops a real system dialog the user can
+    // accept or deny, similar to camera/location prompts.
+    //
+    // registerForActivityResult() is the modern replacement for the old
+    // onRequestPermissionsResult() override. It MUST be called during
+    // Activity initialisation (as a property, before onCreate() finishes
+    // setting up), not lazily inside a click handler — the Activity needs
+    // to register this launcher before it reaches STARTED state.
+    //
+    // We don't use the granted/denied Boolean result for anything beyond
+    // logging: if the user denies it, OverlayService still runs fine —
+    // it just won't be able to show its persistent notification. There is
+    // nothing to block or retry here.
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            Log.d("TapDebug", "POST_NOTIFICATIONS permission result: granted=$isGranted")
+        }
 
     /**
      * Called once when this screen is first created (or re-created after rotation).
@@ -72,10 +113,14 @@ class MainActivity : AppCompatActivity() {
         // findViewById() searches the inflated layout for a view with the given ID.
         // The IDs are declared in activity_main.xml (android:id="@+id/...").
         // We cast to the correct type with the generic parameter <T>.
-        val statusText      = findViewById<TextView>(R.id.textViewStatus)
-        val btnOpenSettings = findViewById<Button>(R.id.buttonOpenSettings)
-        val btnTap          = findViewById<Button>(R.id.buttonSendTap)
-        val btnTargetTest   = findViewById<Button>(R.id.buttonTargetTest)
+        val statusText          = findViewById<TextView>(R.id.textViewStatus)
+        val btnOpenSettings     = findViewById<Button>(R.id.buttonOpenSettings)
+        val btnTap              = findViewById<Button>(R.id.buttonSendTap)
+        val btnTargetTest       = findViewById<Button>(R.id.buttonTargetTest)
+        val overlayStatusText   = findViewById<TextView>(R.id.textViewOverlayStatus)
+        val btnOverlayPermission = findViewById<Button>(R.id.buttonOverlayPermission)
+        val btnShowOverlay      = findViewById<Button>(R.id.buttonShowOverlay)
+        val btnHideOverlay      = findViewById<Button>(R.id.buttonHideOverlay)
 
         // ── VERIFY: does the target button's actual rendered position match ──
         // the hardcoded tap coordinates (TAP_X, TAP_Y)?
@@ -169,6 +214,116 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        // ── BUTTON 3: Grant Overlay Permission (Milestone 2) ────────────────
+        // SYSTEM_ALERT_WINDOW is a SPECIAL permission — same category as the
+        // accessibility permission above: no popup dialog, just a deep-link
+        // to a dedicated system Settings screen where the user flips it on
+        // manually. Settings.canDrawOverlays() is how we check the current
+        // state; it re-reads live system state each call, so it's always
+        // accurate (no caching gotchas to worry about).
+        btnOverlayPermission.setOnClickListener {
+            if (Settings.canDrawOverlays(this)) {
+                // Already granted — nothing to do. Status text (updated in
+                // updateOverlayStatus()) already reflects this.
+                Log.d("TapDebug", "Overlay permission already granted")
+            } else {
+                // Uri.parse("package:$packageName") tells the Settings screen
+                // WHICH app's permission page to open — without it, Android
+                // has no way to know which app is asking.
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+            }
+        }
+
+        // ── BUTTON 4: Show Overlay (Milestone 2) ─────────────────────────────
+        // Starts OverlayService, which draws the small floating button on
+        // top of every other app and hosts the repeating tap loop.
+        btnShowOverlay.setOnClickListener {
+            if (!Settings.canDrawOverlays(this)) {
+                // Guard against the button being tapped before permission is
+                // granted. Buttons are also enabled/disabled in
+                // updateOverlayStatus(), but a direct check here is cheap
+                // insurance against any stale UI state.
+                Toast.makeText(
+                    this,
+                    getString(R.string.status_overlay_permission_needed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                // POST_NOTIFICATIONS is only a real runtime permission from
+                // API 33 (Android 13) onward — on older versions, posting a
+                // notification never required asking the user at all.
+                // A denial here does NOT block starting the service: the
+                // foreground service still runs correctly either way, it
+                // just won't be able to show its persistent notification if
+                // denied. So we fire the request and start the service in
+                // the same step, without waiting for the (asynchronous)
+                // permission result.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(
+                        this,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+
+                // ContextCompat.startForegroundService() (rather than plain
+                // startService()) is required on API 26+ so the system
+                // correctly expects this service to promote itself to
+                // foreground via startForeground() within a few seconds.
+                ContextCompat.startForegroundService(
+                    this,
+                    Intent(this, OverlayService::class.java)
+                )
+            }
+            updateOverlayStatus(overlayStatusText, btnShowOverlay, btnHideOverlay)
+        }
+
+        // ── BUTTON 5: Hide Overlay (Milestone 2) ─────────────────────────────
+        btnHideOverlay.setOnClickListener {
+            stopService(Intent(this, OverlayService::class.java))
+            updateOverlayStatus(overlayStatusText, btnShowOverlay, btnHideOverlay)
+        }
+
+        // Set the correct initial overlay status/button state as soon as the
+        // screen is created (onResume() also calls this every time the user
+        // returns to this screen, e.g. after granting permission in Settings).
+        updateOverlayStatus(overlayStatusText, btnShowOverlay, btnHideOverlay)
+    }
+
+    // ─── HELPER: REFRESH OVERLAY STATUS TEXT + BUTTON ENABLED STATE ────────────
+    //
+    // Shared by onCreate() (initial state) and onResume() (state can change
+    // any time this Activity isn't visible — e.g. the user grants overlay
+    // permission in Settings, or the OverlayService is killed by the system).
+    //
+    // Both canDrawOverlays() and OverlayService.instance are cheap,
+    // synchronous checks (a live system query and a null-check on a static
+    // variable, respectively) — safe to call from the main thread here.
+    private fun updateOverlayStatus(
+        overlayStatusText: TextView,
+        btnShowOverlay: Button,
+        btnHideOverlay: Button
+    ) {
+        val hasOverlayPermission = Settings.canDrawOverlays(this)
+        val isOverlayShowing = OverlayService.instance != null
+
+        overlayStatusText.text = when {
+            !hasOverlayPermission -> getString(R.string.status_overlay_permission_needed)
+            isOverlayShowing -> getString(R.string.status_overlay_shown)
+            else -> getString(R.string.status_overlay_permission_granted)
+        }
+
+        // Show Overlay only makes sense once permission is granted AND the
+        // overlay isn't already showing (avoids duplicate start attempts).
+        btnShowOverlay.isEnabled = hasOverlayPermission && !isOverlayShowing
+        // Hide Overlay only makes sense while the overlay is actually showing.
+        btnHideOverlay.isEnabled = isOverlayShowing
     }
 
     /**
@@ -194,5 +349,15 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.status_service_off)
         }
+
+        // Refresh overlay permission + OverlayService running state too —
+        // this is the moment the user lands back on this screen after
+        // granting overlay permission in Settings, so it must be re-checked
+        // here, not just once in onCreate().
+        updateOverlayStatus(
+            findViewById(R.id.textViewOverlayStatus),
+            findViewById(R.id.buttonShowOverlay),
+            findViewById(R.id.buttonHideOverlay)
+        )
     }
 }

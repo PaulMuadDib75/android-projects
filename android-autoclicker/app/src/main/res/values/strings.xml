@@ -69,4 +69,43 @@
     <!-- Shown when the target test button's own onClick fires, proving the injected tap was a real, functional touch event -->
     <string name="status_target_tapped">TARGET BUTTON WAS TAPPED!</string>
 
+
+    <!-- ── Milestone 2: Overlay ─────────────────────────────────────────────── -->
+
+    <!-- Shown in Settings > Apps > Notifications as the category name for our foreground-service notification -->
+    <string name="notification_channel_name">Overlay Running</string>
+
+    <!-- Longer description of the notification channel, shown if the user taps into its settings -->
+    <string name="notification_channel_description">Shows a persistent notification while the floating tap-control overlay is active</string>
+
+    <!-- Title of the persistent notification shown while OverlayService is running -->
+    <string name="notification_title">Auto-Clicker overlay active</string>
+
+    <!-- Body text of the persistent notification -->
+    <string name="notification_text">Tap the floating button to start or stop tapping</string>
+
+    <!-- Button that requests the SYSTEM_ALERT_WINDOW ("draw over other apps") permission -->
+    <string name="btn_overlay_permission">Grant Overlay Permission</string>
+
+    <!-- Button that starts OverlayService and shows the floating button -->
+    <string name="btn_show_overlay">Show Overlay</string>
+
+    <!-- Button that stops OverlayService and hides the floating button -->
+    <string name="btn_hide_overlay">Hide Overlay</string>
+
+    <!-- Shown when SYSTEM_ALERT_WINDOW has not been granted yet -->
+    <string name="status_overlay_permission_needed">Overlay permission: NOT GRANTED — tap above to enable</string>
+
+    <!-- Shown when SYSTEM_ALERT_WINDOW is already granted -->
+    <string name="status_overlay_permission_granted">Overlay permission: granted</string>
+
+    <!-- Shown when OverlayService.instance == null (floating button not on screen) -->
+    <string name="status_overlay_hidden">Overlay: hidden</string>
+
+    <!-- Shown when OverlayService.instance != null (floating button is on screen) -->
+    <string name="status_overlay_shown">Overlay: shown — drag it, or tap it to start/stop tapping</string>
+
+    <!-- Accessibility label (screen-reader description) for the floating overlay button itself -->
+    <string name="overlay_toggle_content_description">Auto-Clicker floating control button. Drag to move, tap to start or stop tapping.</string>
+
 </resources>

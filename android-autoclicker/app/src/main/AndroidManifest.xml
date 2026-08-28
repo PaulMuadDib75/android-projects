@@ -18,6 +18,85 @@
 
     <!--
         ═══════════════════════════════════════════════════════════════════
+        PERMISSIONS — Milestone 2
+        Every permission below was flagged to Chris and explained BEFORE
+        being added, per the project rule in CLAUDE.md. Keeping that
+        explanation here too, so the "why" travels with the code.
+        ═══════════════════════════════════════════════════════════════════
+    -->
+
+    <!--
+        SYSTEM_ALERT_WINDOW
+        WHY THIS IS NEEDED:
+          This is what lets us draw a window that floats ON TOP of other
+          apps (the whole point of Milestone 2's overlay button). Without
+          it, WindowManager.addView() with TYPE_APPLICATION_OVERLAY throws
+          a SecurityException.
+
+          This is a SPECIAL permission — like the accessibility permission
+          in M1, Android will NOT show a normal install-time or popup
+          prompt for it. The user must be sent to a dedicated system
+          Settings screen (Settings.canDrawOverlays() to check,
+          ACTION_MANAGE_OVERLAY_PERMISSION to request) and flip it on
+          manually. The app can never silently grant this to itself —
+          that's a deliberate security gate, same reasoning as
+          accessibility services being sensitive.
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!--
+        FOREGROUND_SERVICE
+        WHY THIS IS NEEDED:
+          Since Android 9 (API 28), any service that wants to run as a
+          "foreground service" — one Android won't casually kill to free
+          memory, shown to the user via a persistent notification — must
+          declare this permission. It's a "normal" permission: granted
+          automatically at install time, no popup, no user action needed.
+
+          We need our new OverlayService to be a foreground service so the
+          floating button and its tap loop keep running reliably instead
+          of getting killed a few minutes after the app is backgrounded.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!--
+        FOREGROUND_SERVICE_SPECIAL_USE
+        WHY THIS IS NEEDED:
+          Android 14 (API 34, our targetSdk) requires every foreground
+          service to declare WHICH CATEGORY of work it's doing (camera,
+          location, media playback, health, etc.) so the system can apply
+          the right battery/resource rules to it. A floating auto-clicker
+          control button doesn't fit any of those predefined categories,
+          so we use the catch-all "specialUse" category instead — this
+          permission is what unlocks using it. See the OverlayService
+          <service> declaration below for the matching
+          foregroundServiceType="specialUse" and justification <property>.
+
+          Also a "normal" permission — auto-granted, no user prompt.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!--
+        POST_NOTIFICATIONS
+        WHY THIS IS NEEDED:
+          A foreground service is legally required to show a notification
+          (that's the whole deal — it's how the user always knows
+          something is running in the background, even when the app
+          itself isn't open). On Android 13+ (API 33+), showing ANY
+          notification requires this runtime permission.
+
+          Unlike the two "normal" permissions above, this one IS a real
+          popup dialog the user can accept or deny — same category as
+          things like camera/location permission requests. If the user
+          denies it, our foreground service still runs fine; the
+          notification just silently doesn't display. We request this
+          from MainActivity, only on API 33+, after overlay permission is
+          confirmed.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+        ═══════════════════════════════════════════════════════════════════
         APPLICATION BLOCK
         Wraps all components (Activities, Services) belonging to this app.
         ═══════════════════════════════════════════════════════════════════
@@ -144,6 +223,54 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+
+        </service>
+
+
+        <!--
+            ═══════════════════════════════════════════════════════════════
+            OVERLAY SERVICE DECLARATION — Milestone 2
+            Hosts the floating draggable button and its tap-dispatch loop.
+            ═══════════════════════════════════════════════════════════════
+
+            android:name
+              The Kotlin class implementing this foreground service.
+
+            ───────────────────────────────────────────────────────────────
+            android:exported="false"
+            WHY THIS IS DIFFERENT FROM TapAccessibilityService ABOVE:
+              TapAccessibilityService must be exported=true because the
+              SYSTEM's accessibility framework (a different process) needs
+              to bind to it. OverlayService is only ever started by OUR
+              OWN MainActivity, in our own process — nothing outside this
+              app ever needs to reach it, so we keep the door closed.
+            ───────────────────────────────────────────────────────────────
+
+            android:foregroundServiceType="specialUse"
+            WHY THIS IS NEEDED:
+              Required on API 34+ for any foreground service — declares
+              which system-recognised category of work this service does.
+              "specialUse" is the catch-all category for services (like
+              this one) that don't fit camera/location/mediaPlayback/etc.
+              Must be paired with the FOREGROUND_SERVICE_SPECIAL_USE
+              permission declared above, and the justification <property>
+              below.
+        -->
+        <service
+            android:name=".OverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+
+            <!--
+                PROPERTY_SPECIAL_USE_FGS_SUBTYPE
+                Not a permission — a plain-text justification string. This
+                isn't shown to the user; it's what Google Play's review
+                process reads to confirm "specialUse" isn't being used to
+                dodge the real foreground-service category rules.
+            -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Displays a floating control button to start and stop automated taps while other apps are in the foreground" />
 
         </service>
 
