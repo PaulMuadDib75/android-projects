@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    overlay_record_on.xml
+    ═══════════════════════
+    Background for the floating panel's Record button while a recording
+    session is active. Red, not green — this app already uses green
+    (target_tapped_green / overlay_toggle_on) to mean "tap loop is running."
+    Recording is a DIFFERENT on-state (marking points, not replaying them),
+    so it gets its own color language: red is also the universal
+    "recording in progress" color in most camera/screen-recorder UIs, which
+    makes the meaning recognizable without reading any text.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <solid android:color="@color/recording_active_red" />
+
+    <stroke
+        android:width="2dp"
+        android:color="@color/white" />
+
+</shape>

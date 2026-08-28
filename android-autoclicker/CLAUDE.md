@@ -28,6 +28,24 @@ Kotlin, Android Studio/Gradle project.
   verification steps passed, including the overlay surviving a task-kill
   from Recents (confirms the foreground service is genuinely independent
   of MainActivity's lifecycle, as designed).
+- Milestone 3 complete and verified on-device — multi-point tap recording.
+  The floating panel gained a second button (Record), and OverlayService
+  gained a separate full-screen `TYPE_APPLICATION_OVERLAY` window
+  (`overlay_recording_catcher.xml`) that's added only while recording is
+  active and omits `FLAG_NOT_TOUCH_MODAL` — the one flag responsible for
+  the panel's normal pass-through behavior — so it intercepts every touch
+  instead. Each `ACTION_DOWN` on that window is captured as a `TapPoint`
+  (absolute `event.rawX`/`event.rawY`) into an in-memory, ordered,
+  per-session list; a Stop Recording button inside that same window's view
+  hierarchy ends the session, removes the window, and reports the count via
+  Toast + Logcat. Recording and the M2 tap loop are mutually exclusive
+  (starting a recording stops an active loop; `startTapLoop()` no-ops while
+  recording). No persistence yet (Milestone 5), no sequence editor yet
+  (Milestone 4) — just capture. No AndroidManifest.xml changes were needed.
+  Verified on-device: touch interception works, live point counter updates,
+  pass-through is correctly blocked during recording and restored after
+  Stop, mutual exclusion holds, and the overlay survives a task-kill from
+  Recents.
 
 ## Lessons Learned
 - `dispatchGesture()` operates in **absolute screen coordinates** — the
@@ -72,6 +90,22 @@ Kotlin, Android Studio/Gradle project.
   (M1 status bar offset, M2 drag jitter, M3 risk), so treat "is this
   coordinate raw/absolute or view/layout-relative?" as a mandatory
   question for any new code that reads or writes a screen position.
+  → Confirmed as the third real instance, not just a risk: Milestone 3's
+  recording catcher captures every point via `event.rawX`/`event.rawY`
+  (never `event.x`/`event.y`) into `TapPoint`, verified correct on-device.
+  Recorded points landed accurately with no offset/skew — the discipline
+  held. Keep applying the same "raw/absolute, never view-local" check to
+  any future code that reads or writes a screen position (M4/M5 included).
+- Milestone 3's recording mode has an intentional tradeoff, not a bug: the
+  full-screen recording catcher window intercepts every touch on screen
+  (it's what lets it capture taps anywhere, including over the
+  game/app underneath), which means the app underneath receives ZERO
+  input for the entire duration a recording session is active. Recording
+  and replay are deliberately separate phases — you mark positions first,
+  then stop recording, then (in a later milestone) replay them. This is
+  not something to "fix" by trying to let touches pass through during
+  recording; doing so would defeat the purpose (you'd lose the ability to
+  capture exact tap coordinates reliably).
 - This project has no `mipmap`/launcher-icon resources at all (no
   `android:icon` set anywhere) — anything needing an icon (e.g. a
   notification's `setSmallIcon()`) needs its own drawable; `R.mipmap.

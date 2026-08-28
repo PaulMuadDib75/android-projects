@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    overlay_record_off.xml
+    ═══════════════════════
+    Background for the floating panel's Record button when NOT recording
+    (idle). Same oval/stroke structure as overlay_toggle_off.xml, for visual
+    consistency between the two buttons on the panel — a user should
+    recognize both as "the same family of button" at a glance.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- Same idle gray as the tap-loop toggle button's off state, reused rather than duplicated -->
+    <solid android:color="@color/overlay_toggle_off_gray" />
+
+    <stroke
+        android:width="2dp"
+        android:color="@color/white" />
+
+</shape>

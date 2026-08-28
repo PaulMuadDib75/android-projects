@@ -108,4 +108,28 @@
     <!-- Accessibility label (screen-reader description) for the floating overlay button itself -->
     <string name="overlay_toggle_content_description">Auto-Clicker floating control button. Drag to move, tap to start or stop tapping.</string>
 
+
+    <!-- ── Milestone 3: Multi-Point Recording ──────────────────────────────── -->
+
+    <!-- Accessibility label for the new Record button on the floating panel -->
+    <string name="overlay_record_content_description">Record button. Tap to start recording a sequence of tap points; tap again to stop.</string>
+
+    <!--
+        Static instructional text shown at the top of the full-screen
+        recording catcher. This is the in-app half of the recording/replay
+        tradeoff explanation — the code comments explain WHY the catcher
+        exists, this string tells the USER what's happening right now.
+    -->
+    <string name="recording_banner_text">Recording — taps here mark points only. The app underneath will NOT receive them until recording stops.</string>
+
+    <!--
+        Format string reused in two places: the live point counter inside
+        the recording catcher (updates after every tap), and the Toast shown
+        when recording stops. %1$d is filled in with recordedPoints.size.
+    -->
+    <string name="recording_points_counter">%1$d points recorded</string>
+
+    <!-- Label for the button inside the recording catcher that ends the session -->
+    <string name="stop_recording_button_text">Stop Recording</string>
+
 </resources>

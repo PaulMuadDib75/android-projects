@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    res/layout/overlay_recording_catcher.xml
+    ══════════════════════════════════════════
+    A SEPARATE, full-screen WindowManager window from overlay_panel.xml.
+    OverlayService only adds this to the screen while a recording session is
+    active, and removes it the instant recording stops.
+
+    WHY A SEPARATE FULL-SCREEN WINDOW (not just widening overlay_panel.xml):
+      overlay_panel.xml's window is deliberately small and uses
+      FLAG_NOT_TOUCH_MODAL, so touches OUTSIDE its small button bounds pass
+      straight through to the app/game underneath — that's what lets the
+      floating button coexist with normally using the game. Recording needs
+      the OPPOSITE: every touch anywhere on screen must be seen by THIS app,
+      not the one underneath. OverlayService builds this window's
+      WindowManager.LayoutParams WITHOUT FLAG_NOT_TOUCH_MODAL — that single
+      missing flag is what makes it touch-intercepting instead of
+      pass-through. The direct, user-facing consequence: while this window
+      is up, the game underneath receives ZERO taps. Recording and replay
+      are separate phases, never simultaneous — the banner text below says
+      this out loud so it's not just a code comment.
+
+    THE DIM BACKGROUND:
+      #33000000 = 20% opaque black (AA=33 in #AARRGGBB). Not fully
+      transparent, on purpose — a visible tint is a constant on-screen
+      reminder "you are in recording mode right now," reinforcing the
+      tradeoff above visually instead of leaving it purely in documentation.
+      Still light enough that the app/game underneath stays visible through
+      it, so you can see what you're marking points on.
+
+    TOUCH DISPATCH — WHY THE STOP BUTTON WORKS RELIABLY HERE:
+      OverlayService attaches a setOnTouchListener to THIS layout's root
+      view to capture every tap-down as a recorded point. The Button below
+      is clickable=true by default, so standard Android touch dispatch
+      hands it (not the root's listener) any touch that starts within its
+      own bounds — the root's point-capture listener never sees a touch
+      that lands on Stop Recording. This is why Stop Recording lives INSIDE
+      this window's own view tree rather than as a separate floating
+      control: it's the one place guaranteed reachable once this
+      full-screen window covers everything else.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/recordingCatcherRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#33000000">
+
+    <!--
+        Static instructional text, pinned near the top so it's visible
+        regardless of screen size. Text itself lives in strings.xml
+        (recording_banner_text) per this project's "no inline text" rule.
+        A semi-opaque background behind the text keeps it legible over any
+        app/game showing through the dim tint.
+    -->
+    <TextView
+        android:id="@+id/recordingBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#99000000"
+        android:padding="16dp"
+        android:text="@string/recording_banner_text"
+        android:textColor="@color/white"
+        android:textSize="14sp" />
+
+    <!--
+        Live count of points recorded so far, updated by OverlayService
+        after every captured tap. Starts at "0 points recorded" via the
+        same recording_points_counter format string used later for the
+        stop Toast, so the wording is consistent between the two.
+    -->
+    <TextView
+        android:id="@+id/recordingPointCounter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="72dp"
+        android:background="#99000000"
+        android:padding="12dp"
+        android:text="0 points recorded"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!--
+        Ends the recording session. Bottom-center placement keeps it clear
+        of the top banner/counter and reachable with a thumb regardless of
+        where on screen points are being recorded.
+    -->
+    <Button
+        android:id="@+id/stopRecordingButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="48dp"
+        android:text="@string/stop_recording_button_text" />
+
+</FrameLayout>

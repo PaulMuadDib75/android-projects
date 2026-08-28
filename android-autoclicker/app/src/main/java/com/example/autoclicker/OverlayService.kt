@@ -31,6 +31,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import kotlin.math.abs
 
@@ -112,6 +115,30 @@ class OverlayService : Service() {
         }
     }
 
+    // ─── RECORDING STATE (Milestone 3) ──────────────────────────────────────
+    // See the "RECORDING CONTROL" section near the bottom of this file for
+    // the methods that use these fields.
+
+    // The Record button on overlay_panel.xml — its background is swapped
+    // between overlay_record_off/on.xml as recording starts/stops, same
+    // pattern as toggleButtonView above.
+    private var recordButtonView: View? = null
+
+    // The SEPARATE full-screen window (overlay_recording_catcher.xml) added
+    // only while recording is active. Distinct from overlayView/layoutParams
+    // above, which are the small always-present panel.
+    private var recordingCatcherView: View? = null
+    private var recordingCatcherLayoutParams: WindowManager.LayoutParams? = null
+    private var recordingCounterView: TextView? = null
+
+    private var isRecording = false
+
+    // Every point captured during the CURRENT recording session, in the
+    // order they were tapped. Cleared at the start of each new session
+    // (see startRecording()) — this is in-memory only, per Milestone 3's
+    // scope; saving sequences across app restarts is Milestone 5.
+    private val recordedPoints = mutableListOf<TapPoint>()
+
 
     // ─── LIFECYCLE: CREATE ──────────────────────────────────────────────────
 
@@ -179,6 +206,13 @@ class OverlayService : Service() {
      */
     override fun onDestroy() {
         Log.d("TapDebug", "OverlayService onDestroy()")
+
+        // If the user hides the overlay (or the service is otherwise torn
+        // down) mid-recording, stopRecording() removes the full-screen
+        // catcher window cleanly. Without this, that window would be
+        // leaked — orphaned on screen with no OverlayService left to remove
+        // it, permanently blocking touches to everything underneath.
+        if (isRecording) stopRecording()
 
         stopTapLoop()
         removeOverlayView()
@@ -250,6 +284,7 @@ class OverlayService : Service() {
 
         val view = LayoutInflater.from(this).inflate(R.layout.overlay_panel, null)
         val toggleButton = view.findViewById<View>(R.id.overlayToggleButton)
+        val recordButton = view.findViewById<View>(R.id.overlayRecordButton)
 
         layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -277,10 +312,16 @@ class OverlayService : Service() {
 
         setupDragAndToggle(toggleButton)
 
+        // Plain click listener, not a touch listener — see overlay_panel.xml's
+        // comment on overlayRecordButton for why this button is deliberately
+        // click-only and does not participate in dragging the panel.
+        recordButton.setOnClickListener { toggleRecording() }
+
         try {
             windowManager.addView(view, layoutParams)
             overlayView = view
             toggleButtonView = toggleButton
+            recordButtonView = recordButton
         } catch (e: Exception) {
             // WindowManager can throw if overlay permission was revoked in
             // the gap between MainActivity's check and this call, or on some
@@ -303,6 +344,7 @@ class OverlayService : Service() {
         }
         overlayView = null
         toggleButtonView = null
+        recordButtonView = null
     }
 
 
@@ -395,6 +437,15 @@ class OverlayService : Service() {
 
     private fun startTapLoop() {
         if (isTapLoopRunning) return
+        // Defense-in-depth: the tap loop and recording are mutually
+        // exclusive (see startRecording()'s own comment for why — a
+        // dispatched tap landing on the recording catcher window would get
+        // mistaken for a real user touch). In normal use this branch is
+        // unreachable, since the recording catcher window physically covers
+        // toggleButtonView while recording, but a defensive guard here costs
+        // nothing and closes off any future path that calls startTapLoop()
+        // directly.
+        if (isRecording) return
         Log.d("TapDebug", "Tap loop started")
         isTapLoopRunning = true
         // .post() (not .postDelayed()) so the FIRST tap fires immediately;
@@ -411,5 +462,148 @@ class OverlayService : Service() {
         // even after the button is toggled "off" or the service is destroyed.
         tapHandler.removeCallbacks(tapRunnable)
         toggleButtonView?.setBackgroundResource(R.drawable.overlay_toggle_off)
+    }
+
+
+    // ─── RECORDING CONTROL (Milestone 3) ───────────────────────────────────
+
+    private fun toggleRecording() {
+        if (isRecording) stopRecording() else startRecording()
+    }
+
+    /**
+     * Begins a new recording session: clears any points left over from a
+     * previous session, adds the full-screen touch-intercepting catcher
+     * window, and flips the Record button to its "on" (red) state.
+     */
+    private fun startRecording() {
+        if (isRecording) return
+
+        // Recording and the M2 tap loop are mutually exclusive. Reasoning:
+        // performTap() calls dispatchGesture(), which injects a REAL
+        // MotionEvent into the input pipeline — indistinguishable from an
+        // actual user touch to anything that receives it. If the tap loop
+        // kept firing while the recording catcher window is up (the catcher
+        // is topmost once added), each injected tap would land ON the
+        // catcher and get treated as a genuine recorded point (or worse,
+        // accidentally trigger Stop Recording). Stopping the loop first
+        // avoids that entirely.
+        stopTapLoop()
+
+        Log.d("TapDebug", "Recording started")
+        isRecording = true
+
+        // Fresh session every time: Milestone 3 records ONE sequence at a
+        // time, not an accumulating history across multiple Record presses.
+        recordedPoints.clear()
+
+        recordButtonView?.setBackgroundResource(R.drawable.overlay_record_on)
+        addRecordingCatcherView()
+    }
+
+    /**
+     * Ends the current recording session: removes the full-screen catcher
+     * window (restoring normal pass-through operation for the panel
+     * button), flips the Record button back to "off," and reports how many
+     * points were captured. No sequence editor yet — that's Milestone 4/5
+     * territory — so a Toast + Logcat line is the entire "confirmation."
+     */
+    private fun stopRecording() {
+        if (!isRecording) return
+
+        isRecording = false
+        recordButtonView?.setBackgroundResource(R.drawable.overlay_record_off)
+        removeRecordingCatcherView()
+
+        val count = recordedPoints.size
+        Log.d("TapDebug", "Recording stopped: $count points recorded")
+        Toast.makeText(
+            this,
+            getString(R.string.recording_points_counter, count),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    /**
+     * Inflates overlay_recording_catcher.xml and adds it as a SEPARATE,
+     * full-screen WindowManager window on top of the small panel window.
+     * See overlay_recording_catcher.xml's own header comment for the full
+     * reasoning behind this being a second window rather than a change to
+     * the existing panel.
+     */
+    private fun addRecordingCatcherView() {
+        val view = LayoutInflater.from(this).inflate(R.layout.overlay_recording_catcher, null)
+        val stopButton = view.findViewById<Button>(R.id.stopRecordingButton)
+        val counter = view.findViewById<TextView>(R.id.recordingPointCounter)
+
+        stopButton.setOnClickListener { stopRecording() }
+
+        // Every ACTION_DOWN anywhere on this full-screen root becomes one
+        // recorded point. ACTION_DOWN only (not MOVE/UP) — this is
+        // "tap-to-record," one point per discrete finger-down, not a
+        // continuous drag sampler. event.rawX/rawY are ABSOLUTE SCREEN
+        // coordinates (see TapPoint.kt's own comment on why this matters) —
+        // the exact same space TapAccessibilityService.performTap() expects,
+        // so a later milestone can replay these points with zero coordinate
+        // conversion.
+        //
+        // A touch that starts on stopButton never reaches this listener —
+        // standard Android touch dispatch hands a clickable child any touch
+        // that begins within its own bounds, before the parent's own
+        // OnTouchListener ever sees it.
+        //
+        // Returning true unconditionally consumes every touch, which is the
+        // whole point of this window: nothing passes through to the app
+        // underneath while recording is active.
+        view.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                recordedPoints.add(TapPoint(event.rawX, event.rawY))
+                counter.text = getString(R.string.recording_points_counter, recordedPoints.size)
+            }
+            true
+        }
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            // FLAG_NOT_FOCUSABLE only — deliberately NOT FLAG_NOT_TOUCH_MODAL.
+            // The panel window (addOverlayView() above) uses BOTH flags,
+            // and FLAG_NOT_TOUCH_MODAL is exactly what makes ITS touches
+            // pass through to the app underneath. Omitting it here is what
+            // makes THIS window intercept every touch instead. Keeping
+            // FLAG_NOT_FOCUSABLE means hardware back/home still work
+            // normally even while this window covers the whole screen.
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT // lets the dim tint's transparency show the app behind it
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+
+        try {
+            windowManager.addView(view, params)
+            recordingCatcherView = view
+            recordingCatcherLayoutParams = params
+            recordingCounterView = counter
+        } catch (e: Exception) {
+            Log.e("TapDebug", "Failed to add recording catcher view", e)
+        }
+    }
+
+    /**
+     * Removes the full-screen recording catcher, restoring the panel's
+     * normal pass-through behavior. Safe to call even if the view was never
+     * successfully added.
+     */
+    private fun removeRecordingCatcherView() {
+        val view = recordingCatcherView ?: return
+        try {
+            windowManager.removeView(view)
+        } catch (e: Exception) {
+            Log.e("TapDebug", "Failed to remove recording catcher view", e)
+        }
+        recordingCatcherView = null
+        recordingCatcherLayoutParams = null
+        recordingCounterView = null
     }
 }
